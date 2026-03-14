@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { api } from '../api'
+import { useAuth } from '../context/AuthContext'
 
 export default function Login() {
   const navigate = useNavigate()
@@ -8,14 +10,22 @@ export default function Login() {
 
   const accent = '#4af0c8'
   const border = 'rgba(255,255,255,0.08)'
+  const { login } = useAuth()
 
-  function handleLogin() {
-    setError('')
-    if (!form.email || !form.password) return setError('Please fill in all fields.')
-    // TODO: connect to backend auth
-    console.log('Logging in:', form)
+  async function handleLogin() {
+  setError('')
+  if (!form.email || !form.password) return setError('Please fill in all fields.')
+  try {
+    const { token, user } = await api.login({
+      email: form.email,
+      password: form.password,
+    })
+    login(token, user)
     navigate('/dashboard')
+  } catch (err) {
+    setError(err.message)
   }
+}
 
   return (
     <div style={{ background: '#060612', minHeight: '100vh', color: '#f0f0f0', fontFamily: "'DM Sans', sans-serif", display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '2rem' }}>

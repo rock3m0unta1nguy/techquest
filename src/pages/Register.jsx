@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { api } from '../api'
+import { useAuth } from '../context/AuthContext'
 
 const tiers = [
   { id: 'explorer', name: 'Explorer', age: 'Ages 8–12', emoji: '🚀', desc: 'Visual, fun, beginner friendly' },
@@ -20,6 +22,7 @@ const goals = [
 
 export default function Register() {
   const navigate = useNavigate()
+  const { login } = useAuth()
   const [step, setStep] = useState(1)
   const [form, setForm] = useState({
     name: '',
@@ -54,11 +57,22 @@ export default function Register() {
     if (step < totalSteps) { setStep(s => s + 1) } else { handleSubmit() }
   }
 
-  function handleSubmit() {
-    // TODO: connect to backend
-    console.log('Registering:', form)
+  async function handleSubmit() {
+  try {
+    const { token, user } = await api.register({
+      name: form.name,
+      email: form.email,
+      password: form.password,
+      tier: form.tier,
+      goal: form.goal,
+      tracks: form.tracks,
+    })
+    login(token, user)
     navigate('/dashboard')
+  } catch (err) {
+    setError(err.message)
   }
+}
 
   const accent = '#4af0c8'
   const bg = '#060612'

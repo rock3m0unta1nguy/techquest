@@ -1,53 +1,13 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useAuth } from '../context/AuthContext'
+import { api } from '../api'
 
 const accent = '#4af0c8'
 const orange = '#f0a84a'
 const border = 'rgba(255,255,255,0.08)'
 const surface = 'rgba(255,255,255,0.03)'
 
-// Mock user data — will be replaced with real backend data later
-const mockUser = {
-  name: 'Alex',
-  tier: 'Builder',
-  emoji: '🔧',
-  points: 340,
-  streak: 5,
-  goal: 30,
-  minutesToday: 18,
-  tracks: [
-    {
-      id: 'scripting',
-      name: 'Scripting',
-      emoji: '⌨️',
-      color: accent,
-      lessonsComplete: 6,
-      lessonsTotal: 24,
-    },
-    {
-      id: 'networking',
-      name: 'Networking',
-      emoji: '🌐',
-      color: orange,
-      lessonsComplete: 3,
-      lessonsTotal: 20,
-    },
-  ],
-  badges: [
-    { id: 1, emoji: '🔥', name: 'On Fire',      desc: '5 day streak',         earned: true  },
-    { id: 2, emoji: '⭐', name: 'First Steps',  desc: 'Complete first lesson', earned: true  },
-    { id: 3, emoji: '🏆', name: 'Track Master', desc: 'Complete a full track', earned: false },
-    { id: 4, emoji: '💎', name: 'Dedicated',    desc: '30 day streak',         earned: false },
-    { id: 5, emoji: '🎓', name: 'Certified',    desc: 'Earn a voucher',        earned: false },
-  ],
-  recentLessons: [
-    { id: 1, title: 'What is a script?',       track: 'Scripting',   points: 20, completed: true  },
-    { id: 2, title: 'Your first Bash command', track: 'Scripting',   points: 25, completed: true  },
-    { id: 3, title: 'Variables in Python',     track: 'Scripting',   points: 30, completed: false },
-    { id: 4, title: 'What is an IP address?',  track: 'Networking',  points: 20, completed: true  },
-    { id: 5, title: 'How DNS works',           track: 'Networking',  points: 25, completed: false },
-  ],
-}
 
 function ProgressBar({ value, max, color }) {
   const pct = Math.min(Math.round((value / max) * 100), 100)
@@ -60,14 +20,28 @@ function ProgressBar({ value, max, color }) {
 
 export default function Dashboard() {
   const navigate = useNavigate()
+  const { user, setUser, logout } = useAuth()
   const [searchParams, setSearchParams] = useSearchParams()
   const activeTab = searchParams.get('tab') || 'overview'
-  const user = mockUser
-  const goalPct = Math.min(Math.round((user.minutesToday / user.goal) * 100), 100)
+  const [progress, setProgress] = useState([])
+
+  useEffect(() => {
+    if (!user) {
+      navigate('/login')
+      return
+    }
+    api.getProgress()
+      .then(data => setProgress(data))
+      .catch(err => console.error('Progress error:', err))
+  }, [user])
 
   function setActiveTab(tab) {
     setSearchParams({ tab })
   }
+
+  if (!user) return null
+  const goalPct = 0 // will wire up with session tracking later
+  const completedLessons = progress.filter(p => p.completed).length
 
   return (
     <div style={{ background: '#060612', minHeight: '100vh', color: '#f0f0f0', fontFamily: "'DM Sans', sans-serif" }}>
@@ -85,8 +59,16 @@ export default function Dashboard() {
           <span style={{ fontSize: '0.85rem', color: accent, fontWeight: 600 }}>
             ⚡ {user.points} pts
           </span>
-          <div style={{ width: '34px', height: '34px', borderRadius: '50%', background: `${accent}20`, border: `1px solid ${accent}44`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem', cursor: 'pointer' }}>
-            {user.emoji}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <div style={{ width: '34px', height: '34px', borderRadius: '50%', background: `${accent}20`, border: `1px solid ${accent}44`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem' }}>
+              {user.tier === 'explorer' ? '🚀' : user.tier === 'builder' ? '🔧' : '⚡'}
+            </div>
+            <button onClick={() => { logout(); navigate('/') }}
+              style={{ background: 'transparent', border: `1px solid ${border}`, color: '#555', cursor: 'pointer', fontSize: '0.8rem', padding: '0.4rem 0.75rem', borderRadius: '6px' }}
+              onMouseEnter={e => e.currentTarget.style.color = '#f05050'}
+              onMouseLeave={e => e.currentTarget.style.color = '#555'}>
+              Log out
+            </button>
           </div>
         </div>
       </nav>
@@ -97,8 +79,7 @@ export default function Dashboard() {
         {/* Welcome */}
         <div style={{ marginBottom: '2.5rem' }}>
           <h1 style={{ fontFamily: "'Fredoka', sans-serif", fontSize: 'clamp(1.75rem, 4vw, 2.5rem)', fontWeight: 700, marginBottom: '0.3rem' }}>
-            Welcome back, {user.name} {user.emoji}
-          </h1>
+            Welcome back, {user.name} {user.tier === 'explorer' ? '🚀' : user.tier === 'builder' ? '🔧' : '⚡'}          </h1>
           <p style={{ color: '#555', fontSize: '0.95rem' }}>
             {goalPct < 100
               ? `You're ${goalPct}% through your daily goal. Keep going!`
@@ -109,10 +90,10 @@ export default function Dashboard() {
         {/* STAT CARDS */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem', marginBottom: '2.5rem' }}>
           {[
-            { label: 'Total Points',   value: user.points,        unit: 'pts', color: accent,   emoji: '⚡' },
-            { label: 'Day Streak',     value: user.streak,        unit: 'days', color: '#f05050', emoji: '🔥' },
-            { label: 'Daily Goal',     value: `${goalPct}%`,      unit: 'done', color: orange,   emoji: '🎯' },
-            { label: 'Badges Earned',  value: user.badges.filter(b => b.earned).length, unit: `/ ${user.badges.length}`, color: '#c084fc', emoji: '🏅' },
+            { label: 'Total Points',  value: user.points,         unit: 'pts',              color: accent,    emoji: '⚡' },
+            { label: 'Day Streak',    value: user.streak,          unit: 'days',             color: '#f05050', emoji: '🔥' },
+            { label: 'Lessons Done',  value: completedLessons,     unit: 'complete',         color: orange,    emoji: '🎯' },
+            { label: 'Badges Earned', value: user.badges ? user.badges.filter(b => b.earned).length : 0, unit: `/ ${user.badges ? user.badges.length : 0}`, color: '#c084fc', emoji: '🏅' },
           ].map(s => (
             <div key={s.label} style={{ padding: '1.25rem', borderRadius: '12px', border: `1px solid ${border}`, background: surface }}>
               <div style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>{s.emoji}</div>
@@ -136,85 +117,106 @@ export default function Dashboard() {
         </div>
 
         {/* TAB — OVERVIEW */}
-        {activeTab === 'overview' && (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem' }}>
+{activeTab === 'overview' && (
+  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem' }}>
 
-            {/* Daily goal progress */}
-            <div style={{ padding: '1.5rem', borderRadius: '12px', border: `1px solid ${border}`, background: surface }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                <span style={{ fontFamily: "'Fredoka', sans-serif", fontSize: '1.05rem', fontWeight: 600 }}>Today's Goal</span>
-                <span style={{ fontSize: '0.8rem', color: orange }}>{user.minutesToday} / {user.goal} min</span>
-              </div>
-              <ProgressBar value={user.minutesToday} max={user.goal} color={orange} />
-              <p style={{ fontSize: '0.8rem', color: '#555', marginTop: '0.75rem' }}>
-                {user.goal - user.minutesToday > 0
-                  ? `${user.goal - user.minutesToday} minutes left to hit your goal`
-                  : 'Goal complete! Great work today 🎉'}
-              </p>
-            </div>
+    {/* Daily goal progress */}
+    <div style={{ padding: '1.5rem', borderRadius: '12px', border: `1px solid ${border}`, background: surface }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+        <span style={{ fontFamily: "'Fredoka', sans-serif", fontSize: '1.05rem', fontWeight: 600 }}>Daily Goal</span>
+        <span style={{ fontSize: '0.8rem', color: orange }}>{user.goal} min/day</span>
+      </div>
+      <ProgressBar value={goalPct} max={100} color={orange} />
+      <p style={{ fontSize: '0.8rem', color: '#555', marginTop: '0.75rem' }}>
+        Complete lessons to track your daily progress
+      </p>
+    </div>
 
-            {/* Track progress */}
-            {user.tracks.map(t => (
-              <div key={t.id} style={{ padding: '1.5rem', borderRadius: '12px', border: `1px solid ${border}`, background: surface }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                  <span style={{ fontFamily: "'Fredoka', sans-serif", fontSize: '1.05rem', fontWeight: 600 }}>
-                    {t.emoji} {t.name}
-                  </span>
-                  <span style={{ fontSize: '0.8rem', color: t.color }}>{t.lessonsComplete} / {t.lessonsTotal} lessons</span>
-                </div>
-                <ProgressBar value={t.lessonsComplete} max={t.lessonsTotal} color={t.color} />
-                <button onClick={() => navigate('/learn')}
-                  style={{ marginTop: '1rem', width: '100%', padding: '0.6rem', borderRadius: '8px', border: `1px solid ${t.color}44`, background: 'transparent', color: t.color, cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600 }}>
-                  Continue →
-                </button>
-              </div>
-            ))}
+    {/* Scripting track progress */}
+    <div style={{ padding: '1.5rem', borderRadius: '12px', border: `1px solid ${border}`, background: surface }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+        <span style={{ fontFamily: "'Fredoka', sans-serif", fontSize: '1.05rem', fontWeight: 600 }}>
+          ⌨️ Scripting
+        </span>
+        <span style={{ fontSize: '0.8rem', color: accent }}>
+          {progress.filter(p => p.track === 'scripting' && p.completed).length} / 8 lessons
+        </span>
+      </div>
+      <ProgressBar value={progress.filter(p => p.track === 'scripting' && p.completed).length} max={8} color={accent} />
+      <button onClick={() => navigate('/learn')}
+        style={{ marginTop: '1rem', width: '100%', padding: '0.6rem', borderRadius: '8px', border: `1px solid ${accent}44`, background: 'transparent', color: accent, cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600 }}>
+        Continue →
+      </button>
+    </div>
 
-            {/* Points to voucher */}
-            <div style={{ padding: '1.5rem', borderRadius: '12px', border: `1px solid rgba(192,132,252,0.2)`, background: 'rgba(192,132,252,0.05)' }}>
-              <div style={{ fontFamily: "'Fredoka', sans-serif", fontSize: '1.05rem', fontWeight: 600, marginBottom: '0.5rem' }}>
-                🎓 Certification Voucher
-              </div>
-              <p style={{ fontSize: '0.85rem', color: '#666', marginBottom: '1rem', lineHeight: 1.6 }}>
-                Earn 1000 points to unlock a voucher toward a certification exam fee.
-              </p>
-              <ProgressBar value={user.points} max={1000} color='#c084fc' />
-              <div style={{ fontSize: '0.78rem', color: '#555', marginTop: '0.5rem' }}>
-                {user.points} / 1000 points — {1000 - user.points} to go
-              </div>
-            </div>
+    {/* Networking track progress */}
+    <div style={{ padding: '1.5rem', borderRadius: '12px', border: `1px solid ${border}`, background: surface }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+        <span style={{ fontFamily: "'Fredoka', sans-serif", fontSize: '1.05rem', fontWeight: 600 }}>
+          🌐 Networking
+        </span>
+        <span style={{ fontSize: '0.8rem', color: orange }}>
+          {progress.filter(p => p.track === 'networking' && p.completed).length} / 8 lessons
+        </span>
+      </div>
+      <ProgressBar value={progress.filter(p => p.track === 'networking' && p.completed).length} max={8} color={orange} />
+      <button onClick={() => navigate('/learn')}
+        style={{ marginTop: '1rem', width: '100%', padding: '0.6rem', borderRadius: '8px', border: `1px solid ${orange}44`, background: 'transparent', color: orange, cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600 }}>
+        Continue →
+      </button>
+    </div>
 
+    {/* Points to voucher */}
+    <div style={{ padding: '1.5rem', borderRadius: '12px', border: `1px solid rgba(192,132,252,0.2)`, background: 'rgba(192,132,252,0.05)' }}>
+      <div style={{ fontFamily: "'Fredoka', sans-serif", fontSize: '1.05rem', fontWeight: 600, marginBottom: '0.5rem' }}>
+        🎓 Certification Voucher
+      </div>
+      <p style={{ fontSize: '0.85rem', color: '#666', marginBottom: '1rem', lineHeight: 1.6 }}>
+        Earn 1000 points to unlock a voucher toward a certification exam fee.
+      </p>
+      <ProgressBar value={user.points} max={1000} color='#c084fc' />
+      <div style={{ fontSize: '0.78rem', color: '#555', marginTop: '0.5rem' }}>
+        {user.points} / 1000 points — {1000 - user.points} to go
+      </div>
+    </div>
+
+  </div>
+)}
+
+{activeTab === 'lessons' && (
+  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+    {progress.length === 0 ? (
+      <div style={{ textAlign: 'center', padding: '3rem', color: '#555' }}>
+        <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>📚</div>
+        <p>No lessons completed yet.</p>
+        <button onClick={() => navigate('/learn')}
+          style={{ marginTop: '1rem', padding: '0.75rem 1.5rem', borderRadius: '8px', border: 'none', background: accent, color: '#060612', cursor: 'pointer', fontWeight: 700 }}>
+          Start Learning →
+        </button>
+      </div>
+    ) : (
+      progress.map(lesson => (
+        <div key={lesson.lesson_id}
+          style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '1rem 1.25rem', borderRadius: '10px', border: `1px solid ${accent}33`, background: `${accent}06` }}>
+          <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: `${accent}20`, border: `1px solid ${accent}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.9rem', flexShrink: 0, color: accent }}>
+            ✓
           </div>
-        )}
-
-        {/* TAB — LESSONS */}
-        {activeTab === 'lessons' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-            {user.recentLessons.map(lesson => (
-              <div key={lesson.id}
-                style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '1rem 1.25rem', borderRadius: '10px', border: `1px solid ${border}`, background: surface, cursor: lesson.completed ? 'default' : 'pointer', opacity: lesson.completed ? 0.6 : 1, transition: 'border-color 0.2s' }}
-                onMouseEnter={e => { if (!lesson.completed) e.currentTarget.style.borderColor = accent }}
-                onMouseLeave={e => e.currentTarget.style.borderColor = border}
-                onClick={() => !lesson.completed && navigate(`/lesson/${lesson.id}`)}>
-                <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: lesson.completed ? `${accent}20` : `${border}`, border: `1px solid ${lesson.completed ? accent : border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.9rem', flexShrink: 0 }}>
-                  {lesson.completed ? '✓' : '▶'}
-                </div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: '0.95rem', fontWeight: 500, marginBottom: '0.2rem' }}>{lesson.title}</div>
-                  <div style={{ fontSize: '0.78rem', color: '#555' }}>{lesson.track}</div>
-                </div>
-                <div style={{ fontSize: '0.8rem', color: accent, fontWeight: 600 }}>+{lesson.points} pts</div>
-                {lesson.completed && <div style={{ fontSize: '0.75rem', color: '#444', marginLeft: '0.5rem' }}>Done</div>}
-              </div>
-            ))}
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: '0.95rem', fontWeight: 500, marginBottom: '0.2rem' }}>{lesson.title}</div>
+            <div style={{ fontSize: '0.78rem', color: '#555', textTransform: 'capitalize' }}>{lesson.track}</div>
           </div>
-        )}
+          <div style={{ fontSize: '0.8rem', color: accent, fontWeight: 600 }}>+{lesson.points} pts</div>
+          <div style={{ fontSize: '0.75rem', color: '#444' }}>Done</div>
+        </div>
+      ))
+    )}
+  </div>
+)}
 
         {/* TAB — BADGES */}
         {activeTab === 'badges' && (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '1rem' }}>
-            {user.badges.map(badge => (
-              <div key={badge.id}
+            {(user.badges || []).map(badge => (              <div key={badge.id}
                 style={{ padding: '1.5rem', borderRadius: '12px', border: `1px solid ${badge.earned ? `${accent}33` : border}`, background: badge.earned ? `${accent}08` : surface, textAlign: 'center', opacity: badge.earned ? 1 : 0.45, transition: 'transform 0.2s' }}
                 onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-3px)'}
                 onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}>
