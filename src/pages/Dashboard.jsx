@@ -63,6 +63,12 @@ export default function Dashboard() {
             <div style={{ width: '34px', height: '34px', borderRadius: '50%', background: `${accent}20`, border: `1px solid ${accent}44`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem' }}>
               {user.tier === 'explorer' ? '🚀' : user.tier === 'builder' ? '🔧' : '⚡'}
             </div>
+            <button onClick={() => navigate('/learn')}
+              style={{ background: 'transparent', border: `1px solid ${border}`, color: '#555', cursor: 'pointer', fontSize: '0.8rem', padding: '0.4rem 0.75rem', borderRadius: '6px' }}
+              onMouseEnter={e => e.currentTarget.style.color = accent}
+              onMouseLeave={e => e.currentTarget.style.color = '#555'}>
+              Learn →
+            </button>
             <button onClick={() => { logout(); navigate('/') }}
               style={{ background: 'transparent', border: `1px solid ${border}`, color: '#555', cursor: 'pointer', fontSize: '0.8rem', padding: '0.4rem 0.75rem', borderRadius: '6px' }}
               onMouseEnter={e => e.currentTarget.style.color = '#f05050'}

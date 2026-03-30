@@ -96,6 +96,35 @@ router.post('/', authMiddleware, async (req, res) => {
       }
     }
 
+    // Track Master — complete all lessons in a track
+const completedInTrack = await pool.query(
+  `SELECT COUNT(*) FROM user_progress up
+   JOIN lessons l ON up.lesson_id = l.id
+   WHERE up.user_id = $1 AND up.completed = true AND l.track_id = (
+     SELECT track_id FROM lessons WHERE id = $2
+   )`,
+  [req.userId, lessonId]
+)
+
+const trackTotal = await pool.query(
+  `SELECT COUNT(*) FROM lessons WHERE track_id = (
+     SELECT track_id FROM lessons WHERE id = $1
+   )`,
+  [lessonId]
+)
+
+if (parseInt(completedInTrack.rows[0].count) >= parseInt(trackTotal.rows[0].count)) {
+  const badge = await pool.query(`SELECT id FROM badges WHERE name = 'Track Master'`)
+  if (badge.rows.length > 0) {
+    const result = await pool.query(
+      `INSERT INTO user_badges (user_id, badge_id) VALUES ($1, $2)
+       ON CONFLICT DO NOTHING RETURNING badge_id`,
+      [req.userId, badge.rows[0].id]
+    )
+    if (result.rows.length > 0) newBadges.push('Track Master')
+  }
+}
+
     res.json({ pointsEarned, points, streak, newBadges })
 
   } catch (err) {

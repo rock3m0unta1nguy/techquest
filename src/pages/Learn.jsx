@@ -6,6 +6,7 @@ const orange = '#f0a84a'
 const border = 'rgba(255,255,255,0.08)'
 const surface = 'rgba(255,255,255,0.03)'
 
+const lessonsWithContent = [3, 10]
 const tracks = [
   {
     id: 'scripting',
@@ -13,15 +14,15 @@ const tracks = [
     emoji: '⌨️',
     color: accent,
     desc: 'Learn Python and Bash from the ground up. Write your first scripts and automate real tasks.',
-    lessons: [
-      { id: 1, title: 'What is a script?',         points: 20, completed: true  },
-      { id: 2, title: 'Your first Bash command',   points: 25, completed: true  },
-      { id: 3, title: 'Variables in Python',        points: 30, completed: false },
-      { id: 4, title: 'User input and output',      points: 30, completed: false },
-      { id: 5, title: 'Conditionals (if/else)',     points: 35, completed: false },
-      { id: 6, title: 'Loops in Python',            points: 35, completed: false },
-      { id: 7, title: 'Functions',                  points: 40, completed: false },
-      { id: 8, title: 'Reading files with Python',  points: 40, completed: false },
+      lessons: [
+    { id: 1,  title: 'What is a script?',         points: 20, completed: false },
+    { id: 2,  title: 'Your first Bash command',   points: 25, completed: false },
+    { id: 3,  title: 'Variables in Python',        points: 30, completed: false },
+    { id: 4,  title: 'User input and output',      points: 30, completed: false },
+    { id: 5,  title: 'Conditionals (if/else)',     points: 35, completed: false },
+    { id: 6,  title: 'Loops in Python',            points: 35, completed: false },
+    { id: 7,  title: 'Functions',                  points: 40, completed: false },
+    { id: 8,  title: 'Reading files with Python',  points: 40, completed: false },
     ],
   },
   {
@@ -31,14 +32,14 @@ const tracks = [
     color: orange,
     desc: 'Understand how the internet works — from IP addresses and DNS to protocols and security basics.',
     lessons: [
-      { id: 4, title: 'What is an IP address?',    points: 20, completed: true  },
-      { id: 5, title: 'How DNS works',             points: 25, completed: false },
-      { id: 6, title: 'TCP vs UDP',                points: 30, completed: false },
-      { id: 7, title: 'What is a router?',         points: 30, completed: false },
-      { id: 8, title: 'HTTP and HTTPS',            points: 35, completed: false },
-      { id: 9, title: 'Ports and protocols',       points: 35, completed: false },
-      { id: 10, title: 'Firewalls explained',      points: 40, completed: false },
-      { id: 11, title: 'VPNs and encryption',      points: 40, completed: false },
+      { id: 9, title: 'What is an IP address?',    points: 20, completed: true  },
+      { id: 10, title: 'How DNS works',             points: 25, completed: false },
+      { id: 11, title: 'TCP vs UDP',                points: 30, completed: false },
+      { id: 12, title: 'What is a router?',         points: 30, completed: false },
+      { id: 13, title: 'HTTP and HTTPS',            points: 35, completed: false },
+      { id: 14, title: 'Ports and protocols',       points: 35, completed: false },
+      { id: 15, title: 'Firewalls explained',      points: 40, completed: false },
+      { id: 16, title: 'VPNs and encryption',      points: 40, completed: false },
     ],
   },
 ]
@@ -131,10 +132,12 @@ export default function Learn() {
             All Lessons
           </div>
           {track.lessons.map((lesson, index) => {
-            const isLocked = index > 0 && !track.lessons[index - 1].completed && !lesson.completed
-            return (
+              const isLocked = index > 0 && !track.lessons[index - 1].completed && !lesson.completed
+              const hasContent = lessonsWithContent.includes(lesson.id)
+              const isAccessible = hasContent && !isLocked
+                          return (
               <div key={lesson.id}
-                onClick={() => !isLocked && !lesson.completed && navigate(`/lesson/${lesson.id}`)}
+                onClick={() => isAccessible && !lesson.completed && navigate(`/lesson/${lesson.id}`)}
                 style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '1rem 1.25rem', borderRadius: '10px', border: `1px solid ${lesson.completed ? `${track.color}33` : border}`, background: lesson.completed ? `${track.color}06` : surface, cursor: isLocked ? 'not-allowed' : lesson.completed ? 'default' : 'pointer', opacity: isLocked ? 0.35 : 1, transition: 'all 0.2s' }}
                 onMouseEnter={e => { if (!isLocked && !lesson.completed) e.currentTarget.style.borderColor = track.color }}
                 onMouseLeave={e => { if (!lesson.completed) e.currentTarget.style.borderColor = border }}>
