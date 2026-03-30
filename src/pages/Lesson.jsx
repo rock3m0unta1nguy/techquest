@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import { api } from '../api'
+import { useAuth } from '../context/AuthContext'
 
 const accent = '#4af0c8'
 const orange = '#f0a84a'
@@ -131,6 +133,7 @@ When you type a website address into your browser, a DNS lookup happens behind t
 export default function Lesson() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const { user, refreshUser } = useAuth()
   const lesson = lessons[parseInt(id)]
 
   const [phase, setPhase] = useState('concept')   // concept | practice | quiz | complete
@@ -140,6 +143,7 @@ export default function Lesson() {
   const [selectedOption, setSelectedOption] = useState(null)
   const [quizAnswered, setQuizAnswered] = useState(false)
   const [score, setScore] = useState(0)
+  const [saved, setSaved] = useState(false)
 
   if (!lesson) {
     return (
@@ -172,17 +176,31 @@ export default function Lesson() {
     }
   }
 
-  function nextQuiz() {
-    if (quizIndex + 1 < lesson.quiz.length) {
-      setQuizIndex(i => i + 1)
-      setSelectedOption(null)
-      setQuizAnswered(false)
-    } else {
-      setPhase('complete')
+async function nextQuiz() {
+  if (quizIndex + 1 < lesson.quiz.length) {
+    setQuizIndex(i => i + 1)
+    setSelectedOption(null)
+    setQuizAnswered(false)
+  } else {
+    setPhase('complete')
+    if (!saved) {
+      try {
+        const finalScore = selectedOption === currentQuiz.correct ? score + 1 : score
+        await api.saveProgress({
+          lessonId: lesson.id,
+          score: finalScore,
+        })
+        setSaved(true)
+        await refreshUser()
+      } catch (err) {
+        console.error('Failed to save progress:', err.message)
+      }
     }
   }
+}
 
-  const earnedPoints = Math.round((score / lesson.quiz.length) * lesson.points)
+const finalScore = phase === 'complete' ? score : 0
+const earnedPoints = Math.round((finalScore / lesson.quiz.length) * lesson.points)
 
   return (
     <div style={{ background: '#060612', minHeight: '100vh', color: '#f0f0f0', fontFamily: "'DM Sans', sans-serif" }}>
